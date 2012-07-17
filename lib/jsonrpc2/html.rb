@@ -111,7 +111,14 @@ HTML5
 
 <hr>
 
+<div class="row">
+<div class="span6">
 <h2>Test method</h2>
+</div>
+<div class="span6">
+<h3>Result</h3>
+</div>
+</div>
 <div class="row">
 <div class="span6">
 <form method="POST" action="#{request.script_name}/#{info[:name]}">
@@ -124,10 +131,7 @@ HTML5
 </form>
 </div>
 <div class="span6">
-<h3>Result</h3>
-<xmp>
-#{options[:result]}
-</xmp>
+<pre style="white-space: prewrap">#{CGI.escapeHTML(JSON.pretty_unparse(JSON.parse(options[:result])))}</pre>
 </div>
 </div>
 
