@@ -53,5 +53,5 @@ EOD
   gem.version       = JSONRPC2::VERSION
   gem.add_dependency("httpclient")
   gem.add_dependency("json")
-  gem.add_development_dependency("RedCloth")
+  gem.add_dependency("RedCloth")
 end
