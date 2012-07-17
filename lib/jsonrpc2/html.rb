@@ -53,9 +53,9 @@ HTML5
   def call(interface, request)
     #require 'pp'; pp interface.about
 
-    if interface.auth_with.kind_of?(JSONRPC2::HttpAuth)
+    if interface.auth_with
       response = catch(:rack_response) do
-        interface.auth_with.check(request.env, {}); nil
+        interface.auth_with.browser_check(request.env); nil
       end
       return response if response
     end

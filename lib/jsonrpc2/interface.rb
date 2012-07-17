@@ -45,9 +45,9 @@ class Interface
       request = Rack::Request.new(environment)
       catch :rack_response do
         case JSONRPC2::HTTPUtils.which(environment['HTTP_ACCEPT'], %w[text/html application/json-rpc application/json])
-        when 'text/html', nil
+        when 'text/html'
           JSONRPC2::HTML.call(self, request)
-        when 'application/json-rpc', 'application/json'
+        when 'application/json-rpc', 'application/json', nil # Assume correct by default
           environment['rack.input'].rewind
           data = JSON.parse(environment['rack.input'].read)
           self.new(environment).rack_dispatch(data)
@@ -76,7 +76,6 @@ class Interface
     end
   end
 
-	protected
   # Dispatch call to api method(s)
   #
   # @param [Hash,Array] rpc_data Array of calls or Hash containing one call
@@ -89,6 +88,8 @@ class Interface
 			dispatch_single(rpc_data).to_json
 		end
 	end
+
+	protected
   # JSON result helper
 	def response_ok(id, result)
 		{ 'jsonrpc' => '2.0', 'result' => result, 'id' => id }
@@ -111,7 +112,7 @@ class Interface
 				
 		begin
       if self.class.auth_with 
-        self.class.auth_with.check(@env, rpc) or raise AuthFail, "Invalid credentials"
+        self.class.auth_with.client_check(@env, rpc) or raise AuthFail, "Invalid credentials"
       end
 
 			call(rpc['method'], rpc['id'], rpc['params'])
@@ -127,7 +128,7 @@ class Interface
   #
   # @return [Array] List of api method names
   def api_methods
-    public_methods(false).map(&:to_s) - ['rack_dispatch']
+    public_methods(false).map(&:to_s) - ['rack_dispatch', 'dispatch']
   end
 
   # Call method, checking param and return types
