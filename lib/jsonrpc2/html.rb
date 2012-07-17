@@ -131,11 +131,17 @@ HTML5
 </form>
 </div>
 <div class="span6">
-<pre style="white-space: prewrap">#{CGI.escapeHTML(JSON.pretty_unparse(JSON.parse(options[:result])))}</pre>
+<pre style="white-space: prewrap">#{format_result(options[:result])}</pre>
 </div>
 </div>
 
 EOS
+  end
+  # Format JSON result
+  def format_result(result)
+    CGI.escapeHTML(JSON.pretty_unparse(JSON.parse(result)))
+  rescue Exception
+    result
   end
   end
 end
