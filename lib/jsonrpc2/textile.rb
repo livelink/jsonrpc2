@@ -1,12 +1,16 @@
 require 'redcloth'
 
 module JSONRPC2
+  # Textile documentation output functions
   module TextileEmitter
+    # Returns interface description in textile
 		def to_textile
 			return nil if @about.nil? or @about.empty?
 			str = ""
 			if @title
 				str << "h1. #{@title}\n"
+      else
+        str << "h1. #{name}\n"
 			end
 			if @introduction
 				str << "\nh2. Introduction\n\n#{@introduction}\n"
@@ -40,6 +44,7 @@ module JSONRPC2
 			end
 			str
 		end
+    # Returns method description in textile
     def method_to_textile(info)
       str = ''
       str << "\nh3. #{info[:name]}\n"
@@ -79,7 +84,7 @@ module JSONRPC2
 
             str << "\nbc. "
             if code[:result] # ie. we expect success
-              unless JsonRpcType.valid_params?(self, info[:name], code[:params])
+              unless JSONRPC2::Types.valid_params?(self, info[:name], code[:params])
                 raise "Invalid example params for #{info[:name]} / #{ex[:desc]}"
               end
             end
@@ -90,7 +95,7 @@ module JSONRPC2
               error = { 'jsonrpc' => 2.0, 'error' => code[:error], 'id' => 0 }
               str << "<-- #{nice_json.call(error)}\n"
             elsif code[:result]
-              unless JsonRpcType.valid_result?(self, info[:name], code[:result])
+              unless JSONRPC2::Types.valid_result?(self, info[:name], code[:result])
                 raise "Invalid result example for #{info[:name]} / #{ex[:desc]}"
               end
 
@@ -103,9 +108,11 @@ module JSONRPC2
 
       str
     end
+    # Gets method docs for method #name
     def about_method(name)
       @about[name.to_s]
     end
+    # Returns documentation #section contents in textile
 		def to_textile_group(section)
 			list = @about.values.select { |info| info[:section] == section[:name] }
 

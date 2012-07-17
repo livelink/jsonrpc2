@@ -1,9 +1,12 @@
 require 'cgi'
 module JSONRPC2
+  # HTML output helpers for browseable API interface
   module HTML
   module_function
+  # Wrap body in basic bootstrap template using cdn
   def html5(title, body, options={})
     request = options[:request]
+    [
     <<-HTML5
 <!DOCTYPE html><html>
 <head>
@@ -40,29 +43,47 @@ module JSONRPC2
 </body>
 </html>
 HTML5
+  ]
   end
 
+  # Process browser request for #interface
+  # @param [JSONRPC2::Interface] interface Interface being accessed
+  # @param [Rack::Request] request Request being processed
+  # @return [Rack::Response]
   def call(interface, request)
+    #require 'pp'; pp interface.about
+
+    if interface.auth_with.kind_of?(JSONRPC2::HttpAuth)
+      response = catch(:rack_response) do
+        interface.auth_with.check(request.env, {}); nil
+      end
+      return response if response
+    end
+
     case request.path_info
     when /^\/([a-zA-Z_0-9]+)/
       method = $1
-      if json = request.POST['__json__']
-        begin
-          data = JSON.parse(json)
-          result = interface.new(request).dispatch(data)
-        rescue => e
-          result = e.class.name + ": " + e.message
+      if info = interface.about_method(method)
+        if json = request.POST['__json__']
+          begin
+            data = JSON.parse(json)
+            result = interface.new(request.env).dispatch(data)
+          rescue => e
+            result = e.class.name + ": " + e.message
+          end
         end
+        [200, {'Content-Type' => 'text/html'}, html5(method,describe(interface, request, info, :result => result), :request => request) ]
+      else
+        [404, {'Content-Type' => 'text/html'}, html5("Method not found", "<h1>No such method</h1>", :request => request)]
       end
-      [200, {'Content-Type' => 'text/html'}, html5(method,describe(interface, request, method, :result => result), :request => request) ]
     else
       body = RedCloth.new(interface.to_textile).to_html.gsub(/\<h3\>(.*?)\<\/h3\>/, '<h3><a href="'+request.script_name+'/\1">\1</a></h3>')
       [200, {'Content-Type' => 'text/html'}, 
-              html5('Interface: '+interface.name.to_s, "<h1>#{interface.name}</h1>" + body, :request => request)]
+              html5('Interface: '+interface.name.to_s, body, :request => request)]
     end
   end
-  def describe interface, request, method, options = {}
-    info = interface.about_method(method)
+  # Returns HTML page describing method
+  def describe interface, request, info, options = {}
     params = {}
     if info[:params]
       info[:params].each do |param|
@@ -85,24 +106,30 @@ HTML5
       end
     end
     <<-EOS
-<h1>Method Info</h1>
+<h1>Method Info: #{info[:name]}</h1>
 #{RedCloth.new(interface.method_to_textile(info)).to_html}
 
 <hr>
+
 <h2>Test method</h2>
-<form method="POST" action="#{request.script_name}/#{method}">
-<textarea name="__json__" cols="60" rows="8" class="span8">
-#{CGI.escapeHTML((request.POST['__json__'] || JSON.pretty_unparse({'jsonrpc'=>'2.0', 'method' => method, 'id' => 1, 'params' => params})).strip)}
+<div class="row">
+<div class="span6">
+<form method="POST" action="#{request.script_name}/#{info[:name]}">
+<textarea name="__json__" cols="60" rows="8" class="span6">
+#{CGI.escapeHTML((request.POST['__json__'] || JSON.pretty_unparse({'jsonrpc'=>'2.0', 'method' => info[:name], 'id' => 1, 'params' => params})).strip)}
 </textarea>
 <div class="form-actions">
 <input type="submit" class="btn btn-primary" value="Call Method">
 </div>
 </form>
-
+</div>
+<div class="span6">
 <h3>Result</h3>
 <xmp>
 #{options[:result]}
 </xmp>
+</div>
+</div>
 
 EOS
   end

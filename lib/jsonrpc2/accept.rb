@@ -1,11 +1,12 @@
-module JSONRPC2
+# Utils for parsing HTTP fields
+module JSONRPC2::HTTPUtils
   module_function
   # Converts */* -> /^.*?/.*?$/
   #          text/* -> /^text\/.*?$/
   #          text/html -> /^text\/html$/
   #
-  # @param [String] Media type descriptor
-  # @returns [Regexp] Regular expression that matches type
+  # @param [String] type Media type descriptor
+  # @return [Regexp] Regular expression that matches type
   def type_to_regex type
     case type
     when /[*]/
@@ -26,7 +27,10 @@ module JSONRPC2
      case media
      when /;/
        media, param_str = *media.split(/\s*;\s*(?=q\s*=)/,2)
-       params = param_str.to_s.split(/\s*;\s*/).inject({}) { |hash, str| k,v = *str.strip.split(/=/).map(&:strip); hash.merge(k => v) }
+       params = param_str.to_s.split(/\s*;\s*/).inject({}) { |hash, str|
+         k,v = *str.strip.split(/=/).map(&:strip)
+         hash.merge(k => v)
+       }
        { :q => (params['q'] || 1.0).to_f, :media => media, :index => index }
      else
        { :q => 1.0, :media => media, :index => index }
@@ -43,11 +47,10 @@ module JSONRPC2
     final.sort_by { |k,v| -1 * k }
   end
 
-
   # Selects the clients preferred media/mime type based on Accept header
   #
-  # @param [String] HTTP Accepts header
-  # @param [Array<String>] Media types available
+  # @param [String] http_client_accepts HTTP Accepts header
+  # @param [Array<String>] options Media types available
   def which http_client_accepts, options
     return nil unless http_client_accepts
 

@@ -1,100 +1,106 @@
 require 'jsonrpc2'
 require 'jsonrpc2/accept'
 require 'jsonrpc2/textile'
+require 'jsonrpc2/auth'
 require 'jsonrpc2/html'
+require 'jsonrpc2/types'
 require 'json'
+require 'base64'
 
 module JSONRPC2
-  # Your code goes here...
-class APIFail < RuntimeError
-end
+  # Authentication failed error - only used if transport level authentication isn't.
+  # e.g. BasicAuth returns a 401 HTTP response, rather than throw this.
+  class AuthFail < RuntimeError; end
+
+  # API error - thrown when an error is detected, e.g. params of wrong type.
+  class APIFail < RuntimeError; end
+
+# Base class for JSONRPC2 interface
 class Interface
 	class << self
-		def auth_type *args
+
+# @!group Authentication
+
+    # Get/set authenticator object for API interface - see {JSONRPC2::Auth} and {JSONRPC2::BasicAuth}
+    #
+    # @param [#check] args An object that responds to check(environment, json_call_data)
+    # @return [#check, nil] Currently set object or nil
+		def auth_with *args
 			if args.empty?
-				return @auth_type
+				return @auth_with
 			else
-				@auth_type = args[0]
-				@auth_info = args[1] || {}
+				@auth_with = args[0]
 			end
 		end
-		attr_reader :auth_info
 
-    class RackWrap
-      def initialize(environment)
-        @environment = environment
-      end
-      #def logger
-      #  @environment['rack.logger']
-      #end
-      def request
-        self
-      end
-      def env
-        self
-      end
-      def [](key)
-        @environment[key]
-      end
-    end
+# @!endgroup
 
+# @!group Rack-related
+
+    # Rack compatible call handler
+    #
+    # @param [Hash] environment Rack environment hash
+    # @return [Array<Fixnum, Hash<String,String>, Array<String>>] Rack-compatible response
     def call(environment)
       request = Rack::Request.new(environment)
-      case JSONRPC2.which(environment['HTTP_ACCEPT'], %w[text/html application/jsonrpc application/json])
-      when 'text/html', nil
-        JSONRPC2::HTML.call(self, request)
-      when 'application/jsonrpc', 'application/json'
-        environment['rack.input'].rewind
-        data = JSON.parse(environment['rack.input'].read)
-        [200, {'Content-Type' => 'application/json-rpc'}, self.new(RackWrap.new(environment)).dispatch(data)]
-      else
-        [406, {'Content-Type' => 'text/html'}, "No"]
+      catch :rack_response do
+        case JSONRPC2::HTTPUtils.which(environment['HTTP_ACCEPT'], %w[text/html application/json-rpc application/json])
+        when 'text/html', nil
+          JSONRPC2::HTML.call(self, request)
+        when 'application/json-rpc', 'application/json'
+          environment['rack.input'].rewind
+          data = JSON.parse(environment['rack.input'].read)
+          self.new(environment).rack_dispatch(data)
+        else
+          [406, {'Content-Type' => 'text/html'}, 
+            ["<!DOCTYPE html><html><head><title>Media type mismatch</title></head><body>I am unable to acquiesce to your request</body></html>"]]
+        end
       end
     end
-	end
-	def initialize(env, options = {})
-		@env = env
-	end
-	def dispatch(rpcData)
-		if rpcData.is_a?(Array)
-			rpcData.map { |rpc|
-				_dispatch_single(rpc)
-			}.to_json
-		else
-			_dispatch_single(rpcData).to_json
-		end
-	end
-	def auth_type
-		self.class.auth_type()
+
+# @!endgroup
+
 	end
 
-	protected
-	def auth_info
-		self.class.auth_info
+  # Create new interface object
+  #
+  # @param [Hash] env Rack environment
+	def initialize(env)
+		@env = env
 	end
+  # Internal
+  def rack_dispatch(rpcData)
+    catch(:rack_response) do
+      json = dispatch(rpcData)
+      [200, {'Content-Type' => 'application/json-rpc'}, [json]]
+    end
+  end
+
+	protected
+  # Dispatch call to api method(s)
+  #
+  # @param [Hash,Array] rpc_data Array of calls or Hash containing one call
+  # @return [Hash,Array] Depends on input, but either a hash result or an array of results corresponding to calls.
+  def dispatch(rpc_data)
+		case rpc_data
+    when Array
+			rpc_data.map { |rpc| dispatch_single(rpc) }.to_json
+		else
+			dispatch_single(rpc_data).to_json
+		end
+	end
+  # JSON result helper
 	def response_ok(id, result)
 		{ 'jsonrpc' => '2.0', 'result' => result, 'id' => id }
 	end
+  # JSON error helper
 	def response_error(code, message, data)
 		{ 'jsonrpc' => '2.0', 'error' => { 'code' => code, 'message' => message, 'data' => data }, 'id' => @id }
 	end
-	def auth_basic!
-		begin
-			if auth = @env['HTTP_AUTHORIZATION']
-        m = /Basic\s+([A-Za-z0-9+\/]+=*)/.match(auth)
-				key = auth_info[:secret]+"/"+Time.now.strftime('%Y-%m-%d')
-				src = GibberishAES.dec(auth, key)
-				info = JSON.parse(src)
-				throw(:auth_ok)
-			else
-				return response_error(-32000, "Authentication missing", "")
-			end
-		rescue Exception => e
-			return response_error(-32000, "Authentication failed - #{e.message}/#{e.class}", "")
-		end
-	end
-
-	def _dispatch_single(rpc)
+  # Check call validity and authentication & make a single method call
+  #
+  # @param [Hash] rpc JSON-RPC-2 call
+	def dispatch_single(rpc)
 		unless rpc.has_key?('id') && rpc.has_key?('method') && rpc['jsonrpc'].eql?('2.0')
 			@id = nil
 			return response_error(-32600, 'Invalid request', nil)
@@ -102,27 +108,38 @@ class Interface
 		@id = rpc['id']
 		@method = rpc['method']
 		@rpc = rpc
-
-
-		if respond_to?(s="auth_#{auth_type}!")
-			catch(:auth_ok) do
-				r = __send__(s)
-				return r
-			end
-		end
 				
 		begin
+      if self.class.auth_with 
+        self.class.auth_with.check(@env, rpc) or raise AuthFail, "Invalid credentials"
+      end
+
 			call(rpc['method'], rpc['id'], rpc['params'])
-		rescue APIFail => e
-			response_error(-32000, "#{e.class}: #{e.message}", {}) # XXX: Change me
+		rescue AuthFail => e
+			response_error(-32000, "AuthFail: #{e.class}: #{e.message}", {}) # XXX: Change me
+	  rescue APIFail => e
+			response_error(-32000, "APIFail: #{e.class}: #{e.message}", {}) # XXX: Change me
 		rescue Exception => e
 			response_error(-32000, "#{e.class}: #{e.message}", e.backtrace) # XXX: Change me
 		end
 	end
+  # List API methods
+  #
+  # @return [Array] List of api method names
+  def api_methods
+    public_methods(false).map(&:to_s) - ['rack_dispatch']
+  end
+
+  # Call method, checking param and return types
+  #
+  # @param [String] method Method name
+  # @param [Integer] id Method call ID - for response
+  # @param [Hash] params Method parameters
+  # @return [Hash] JSON response
 	def call(method, id, params)
-		if public_methods(false).map(&:to_s).include?(method)
+		if api_methods.include?(method)
 			begin
-				JsonRpcType.valid_params?(self.class, method, params)
+				Types.valid_params?(self.class, method, params)
 			rescue Exception => e
 				return response_error(-32602, "Invalid params - #{e.message}", {})
 			end
@@ -134,7 +151,7 @@ class Interface
       end
 
 			begin
-				JsonRpcType.valid_result?(self.class, method, result)
+				Types.valid_result?(self.class, method, result)
 			rescue Exception => e
 				return response_error(-32602, "Invalid result - #{e.message}", {})
 			end
@@ -145,121 +162,8 @@ class Interface
 		end
 	end
 
-	module JsonRpcType
-		module_function
-		def valid?(interface, type, object)
-				res = case type
-				when 'String'
-					object.is_a?(String)
-				when 'Number'
-					object.kind_of?(Numeric)
-				when 'true'
-					object == true
-				when 'false'
-					object == false
-				when 'Boolean'
-					object == true || object == false
-				when 'null'
-					object.nil?
-				when 'Integer'
-					object.kind_of?(Numeric) && (object.to_i.to_f == object.to_f)
-				when 'Object'
-					object.is_a?(Hash)
-				when /Array\[(.*)\]/
-					object.is_a?(Array) && object.all? { |value| valid?(interface, $1, value) }
-				else # Custom type
-					subset = (type[-1] == ?*)
-					type = type[0...-1] if subset
-
-					custom = interface.types[type]
-					#STDERR.puts "Type Info: #{custom.inspect}"
-					if custom
-						custom.valid_object?(interface, object, subset)
-					else
-						raise "Invalid/unknown type: #{type} for #{interface.name}"
-					end
-				end
-				#STDERR.puts "#{interface.name}: #{type} - #{object.inspect} - #{res ? "OK" : "FAIL"}"
-				res
-		end
-		def valid_params?(interface, method, data)
-			about = interface.about[method.to_s.intern]
-			return true if about.nil? # Undefined
-
-			params = (about[:params] || [])
-			param_names = params.map { |param| param[:name] }
-
-			if params.empty? && data.empty?
-				return true
-			end
-
-			extra_keys = data.keys - param_names
-			unless extra_keys.empty?
-				raise "Extra parameters #{extra_keys.inspect} for #{method}."
-			end
-			
-			params.all? do |param|
-				if data.has_key?(param[:name])
-					JsonRpcType.valid?(interface, param[:type], data[param[:name].to_s])
-				elsif ! param[:required]
-					next true
-				else
-					raise "Missing parameter: '#{param[:name]}' of type #{param[:type]} for #{method}"
-				end
-			end
-		end
-		def valid_result?(interface, method, data)
-			about = interface.about[method.to_s.intern]
-			return true if about.nil? # Undefined
-			if about[:returns].nil?
-				return data.nil?
-			end
-			JsonRpcType.valid?(interface, about[:returns][:type], data)
-		end
-	end
-
-	class JsonObjectType
-		attr_accessor :name, :fields
-		def initialize(name, fields)
-			@name, @fields = name, fields
-			@required = true
-		end
-		def valid_object?(interface, object, subset = false)
-			object.keys.all? { |key| fields.any? { |field| field[:name] == key } } &&
-				fields.all? { |field| (object.keys.include?(field[:name]) &&
-					JsonRpcType.valid?(interface, field[:type], object[field[:name]])) || subset || (! field[:required]) }
-		end
-
-		def field(name, type, desc)
-			@fields << { :name => name, :type => type, :desc => desc, :required => @required }
-		end
-		def string name, desc; field(name, 'String', desc); end
-		def number name, desc; field(name, 'Number', desc); end
-		def integer name, desc; field(name, 'Integer', desc); end
-		def boolean name, desc; field(name, 'Boolean', desc); end
-
-		def optional(&block)
-			old_required = @required
-			begin
-				@required = false
-				yield(self)
-			ensure
-				@required = old_required
-			end
-		end
-		def required(&block)
-			old_required = @required
-			begin
-				@required = true
-				yield(self)
-			ensure
-				@required = old_required
-			end
-		end
-
-	end
-
 	class << self
+    # Store parameter in internal hash when building API
 		def ___append_param name, type, options
 			@params ||= []
 			unless options.has_key?(:required)
@@ -267,7 +171,14 @@ class Interface
 			end
 			@params << options.merge({ :name => name, :type => type })
 		end
+    private :___append_param
 
+# @!group DSL
+
+    # Define a named parameter of type #type for next method
+    #
+    # @param [String] name parameter name
+    # @param [String] type description of type see {Types}
 		def param name, type, desc = nil, options = nil
 			if options.nil? && desc.is_a?(Hash)
 				options, desc = desc, nil
@@ -278,6 +189,7 @@ class Interface
 			___append_param name, type, options
 		end
 
+    # Define an optional parameter for next method
 		def optional name, type, desc = nil, options = nil
 			if options.nil? && desc.is_a?(Hash)
 				options, desc = desc, nil
@@ -285,22 +197,26 @@ class Interface
 			options ||= {}
 			options[:desc] = desc if desc.is_a?(String)
 
-			___append_param(name, type, nil, options.merge(:required => false))
+			___append_param(name, type, options.merge(:required => false))
 		end
 
+    # Define type of return value for next method
 		def result type, desc = nil
 			@result = { :type => type, :desc => desc }
 		end
 
+    # Set description for next method
 		def desc str
 			@desc = str
 		end
 
+    # Add an example for next method
 		def example desc, code
 			@examples ||= []
 			@examples << { :desc => desc, :code => code }
 		end
 
+    # Define a custom type
 		def type name, *fields
 			@types ||= {}
 			type = JsonObjectType.new(name, fields)
@@ -312,6 +228,7 @@ class Interface
 			@types[name] = type
 		end
 
+    # Group methods
 		def section name, summary=nil
 			@sections ||= []
 			@sections << {:name => name, :summary => summary}
@@ -322,18 +239,25 @@ class Interface
 				@current_section = nil
 			end
 		end
+
+    # Exclude next method from documentation
 		def nodoc
 			@nodoc = true
 		end
 
+    # Set interface title
 		def title str = nil
 			@title = str if str
 		end
 
+    # Sets introduction for interface
 		def introduction str = nil
 			@introduction = str if str
 		end
 
+# @!endgroup
+
+    # Catch methods added to class & store documentation
 		def method_added(name)
 			return if self == JSONRPC2::Interface
 			@about ||= {}
@@ -364,9 +288,11 @@ class Interface
 			@examples = nil
 			@nodoc = false
 		end
+    private :method_added
 		attr_reader :about, :types
 
-    include JSONRPC2::TextileEmitter
 	end
+
+  extend JSONRPC2::TextileEmitter
 end
 end
