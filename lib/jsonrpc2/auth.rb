@@ -89,14 +89,15 @@ class BasicAuth < HttpAuth
 
   # Checks users hash and then the block given to the constructor to
   # verify username / password.
+  # @return [String,false] Username or nothing
   def user_valid?(user, pass)
     if @users && @users.respond_to?(:[])
       if expected = @users[user]
-        return pass == expected
+        return user if pass == expected
       end
     end
     if @lookup
-      return @lookup.call(user, pass)
+      return user if @lookup.call(user, pass)
     end
     false
   end

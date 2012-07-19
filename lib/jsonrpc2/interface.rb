@@ -96,23 +96,28 @@ class Interface
 	end
   # JSON error helper
 	def response_error(code, message, data)
-		{ 'jsonrpc' => '2.0', 'error' => { 'code' => code, 'message' => message, 'data' => data }, 'id' => @id }
+		{ 'jsonrpc' => '2.0', 'error' => { 'code' => code, 'message' => message, 'data' => data }, 'id' => (@jsonrpc_call && @jsonrpc_call['id'] || nil) }
 	end
+  # Params helper
+  def params
+    @jsonrpc_call['params']
+  end
+  # Auth info
+  def auth
+    @jsonrpc_auth
+  end
   # Check call validity and authentication & make a single method call
   #
   # @param [Hash] rpc JSON-RPC-2 call
 	def dispatch_single(rpc)
 		unless rpc.has_key?('id') && rpc.has_key?('method') && rpc['jsonrpc'].eql?('2.0')
-			@id = nil
 			return response_error(-32600, 'Invalid request', nil)
 		end
-		@id = rpc['id']
-		@method = rpc['method']
-		@rpc = rpc
-				
+    @jsonrpc_call = rpc
+
 		begin
-      if self.class.auth_with 
-        self.class.auth_with.client_check(@env, rpc) or raise AuthFail, "Invalid credentials"
+      if self.class.auth_with && ! @jsonrpc_auth
+        (@jsonrpc_auth = self.class.auth_with.client_check(@env, rpc)) or raise AuthFail, "Invalid credentials"
       end
 
 			call(rpc['method'], rpc['id'], rpc['params'])
