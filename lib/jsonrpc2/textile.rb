@@ -7,19 +7,23 @@ module JSONRPC2
 		def to_textile
 			return nil if @about.nil? or @about.empty?
 			str = ""
+
 			if @title
 				str << "h1. #{@title}\n"
       else
         str << "h1. #{name}\n"
 			end
+
 			if @introduction
 				str << "\nh2. Introduction\n\n#{@introduction}\n"
 			end
 
+      # Output type descriptions
+      #
 			unless @types.nil? or @types.empty?
-				str << "\nh2. Types\n"
+				str << "\n\nh2. Types\n"
 				@types.sort_by { |k,v| k }.each do |k,type|
-					str << "\nh5. #{k} type\n"
+					str << "\n\nh5. #{k} type\n"
 
 					str << "\n|_. Field |_. Type |_. Required? |_. Description |"
 					type.fields.each do |field|
@@ -29,27 +33,32 @@ module JSONRPC2
 				end
 			end
 
-			@sections.each do |section|
-				str << "\nh2. #{section[:name]}\n"
+
+      # Output method definitions
+      #
+			(@sections||[]).each do |section|
+				str << "\n\nh2. #{section[:name]}\n"
 				if section[:summary]
 					str << "\n#{section[:summary]}\n"
 				end
 				
 				str += to_textile_group(section).to_s
 			end
+
 			miscfn = to_textile_group({:name => nil})
 			if miscfn
-				str << "\nh2. Misc functions\n"
+				str << "\n\nh2. Misc functions\n" if @sections && ! @sections.empty?
 				str << miscfn
 			end
+
 			str
 		end
     # Returns method description in textile
     def method_to_textile(info)
       str = ''
-      str << "\nh3. #{info[:name]}\n"
+      str << "\n\nh3. #{info[:name]}\n"
       str << "\n#{info[:desc]}\n" if info[:desc]
-      str << "\nh5. Params\n"
+      str << "\n\nh5. Params\n"
       if info[:params].nil?
         str << "\n* _None_\n"
       elsif info[:params].is_a?(Array)
@@ -60,17 +69,17 @@ module JSONRPC2
       end
 
       if res = info[:returns]
-        str << "\nh5. Result\n"
+        str << "\n\nh5. Result\n"
         str << "\n* @#{res[:type]}@"		
         str << " - #{res[:desc]}" if res[:desc]
         str << "\n"
       else
-        str << "\nh5. Result\n"
+        str << "\n\nh5. Result\n"
         str << "\n* @null@"
       end
 
       if examples = info[:examples]
-        str << "\nh5. Sample usage\n"
+        str << "\n\nh5. Sample usage\n"
 
         nice_json = lambda do |data|
           JSON.pretty_unparse(data).gsub(/\n\n+/,"\n").gsub(/[{]\s+[}]/m, '{ }').gsub(/\[\s+\]/m, '[ ]')
