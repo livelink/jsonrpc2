@@ -6,6 +6,10 @@ module JSONRPC2
 class RemoteError < RuntimeError
 end
 
+# JSON RPC remote auth error
+class RemoteAuthError < RemoteError
+end
+
 # Simple JSONRPC client
 class Client
   # Create client object
@@ -36,8 +40,8 @@ class Client
       headers = headers.merge(options[:headers])
     end
 
-    if options[:auth]
-      @client.set_auth(@uri, options[:auth][:username], options[:auth][:password])
+    if options[:user] && options[:pass]
+      @client.set_auth(@uri, options[:user], options[:pass])
     end
 		result = @client.post(@uri, 
 							  { 'method' => method, 'params' => args, 'jsonrpc' => '2.0', 'id' => (@id+=1) }.to_json,
@@ -49,8 +53,17 @@ class Client
 			if data.has_key?('result')
 				return data['result']
 			else
-				raise RemoteError, data['error']['message']
+        if data['error']['code'] == -32000 && data['error']['message'] =~ /^AuthFail/
+          raise RemoteAuthError, data['error']['message']
+        else
+          raise RemoteError, data['error']['message']
+        end
 			end
+    elsif result.status_code == 401
+      if result.headers['WWW-Authenticate'].to_s =~ /realm="([^"]*?)"/
+        suffix = " for #{$1}"
+      end
+      raise RemoteAuthError, "Authentication failed#{suffix}"
 		else
 			raise result.body
 		end

@@ -1,0 +1,28 @@
+#!/usr/bin/env ruby
+require "rubygems" # ruby1.9 doesn't "require" it though
+require "thor"
+require 'jsonrpc2/client'
+require 'json'
+require 'pp'
+
+class JSONClient < Thor
+  method_option :user, :type => :string
+  method_option :pass, :type => :string
+  desc "call URI METHOD [PARAMS]", "Call "
+  def call uri, method, params=nil
+    STDOUT << "#{uri}##{method}(#{params})"
+    uri = "http://#{uri}" unless uri =~ %r'://'
+
+    client = JSONRPC2::Client.new(uri, options)
+    STDOUT << " => "
+    begin
+      pp client.call(method, JSON.parse(params))
+    rescue JSONRPC2::RemoteAuthError => e
+      puts "ERR\nFAIL: #{e.message}"
+    rescue JSONRPC2::RemoteError => e
+      puts "ERR\nFAIL: #{e.message}"
+    end
+  end
+end
+
+JSONClient.start

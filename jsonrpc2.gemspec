@@ -54,4 +54,5 @@ EOD
   gem.add_dependency("httpclient")
   gem.add_dependency("json")
   gem.add_dependency("RedCloth")
+  gem.add_dependency('thor')
 end
