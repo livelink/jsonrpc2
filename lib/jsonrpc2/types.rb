@@ -1,3 +1,5 @@
+require 'date'
+
 module JSONRPC2
   # Types are checked against textual descriptions of the contents:
   #
@@ -15,6 +17,9 @@ module JSONRPC2
   # * CustomType - A defined custom object type
 	module Types
 		module_function
+    DateTimeRegex = %r"([0-9]{4})(-([0-9]{2})(-([0-9]{2})(T([0-9]{2}):([0-9]{2})(:([0-9]{2})(\.([0-9]+))?)?(Z|(([-+])([0-9]{2}):([0-9]{2})))?)?)?)?"
+    DateRegex     = %r'\A\d{4}-\d{2}-\d{2}\z'
+    TimeRegex     = %r'\A\d{2}:\d{2}(?:\.\d{1,4})?\z'
 
     # Checks that object is of given type (and that any custom types
     # comply with interface)
@@ -45,6 +50,12 @@ module JSONRPC2
             object.is_a?(Hash)
           when 'Array'
             object.is_a?(Array)
+          when 'Date'
+            object.is_a?(String) && DateRegex.match(object) || object.is_a?(Date)
+          when 'Time'
+            object.is_a?(String) && TimeRegex.match(object) || object.is_a?(Time)
+          when 'DateTime'
+            object.is_a?(String) && DateTimeRegex.match(object) || object.is_a?(Time)
           when /\AArray\[(.*)\]\z/
             object.is_a?(Array) && object.all? { |value| valid?(interface, $1, value) }
           when 'Value', 'Any', 'void'
