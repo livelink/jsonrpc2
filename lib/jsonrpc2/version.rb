@@ -1,5 +1,5 @@
 # JSONRPC2 namespace module
 module JSONRPC2
   # Version
-  VERSION = "0.0.5"
+  VERSION = "0.0.6"
 end
