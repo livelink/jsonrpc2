@@ -1,4 +1,5 @@
 require 'cgi'
+require 'time'
 module JSONRPC2
   # HTML output helpers for browseable API interface
   module HTML
@@ -100,6 +101,12 @@ HTML5
           0
         when /^Array/
           []
+        when 'Time'
+          "00:00"
+        when 'DateTime'
+          Time.at(0).iso8601
+        when 'Date'
+          '1970-01-01'
         else
           {}
         end
