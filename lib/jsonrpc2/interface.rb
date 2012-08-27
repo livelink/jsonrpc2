@@ -44,8 +44,14 @@ class Interface
     def call(environment)
       request = Rack::Request.new(environment)
       catch :rack_response do
-        case JSONRPC2::HTTPUtils.which(environment['HTTP_ACCEPT'], %w[text/html application/json-rpc application/json])
-        when 'text/html'
+        best = JSONRPC2::HTTPUtils.which(environment['HTTP_ACCEPT'], %w[text/html application/json-rpc application/json])
+
+        if request.path_info =~ %r'/_assets'
+          best = 'text/html' # hack for assets
+        end
+
+        case best
+        when 'text/html', 'text/css', 'image/png' # Assume browser
           JSONRPC2::HTML.call(self, request)
         when 'application/json-rpc', 'application/json', nil # Assume correct by default
           environment['rack.input'].rewind

@@ -14,38 +14,47 @@ module JSONRPC2
 <meta http-equiv="content-type" content="text/html; charset=utf-8">
 <title>#{title}</title>
 #{options[:head]}
-<link rel="stylesheet" href="//current.bootstrapcdn.com/bootstrap-v204/css/bootstrap-combined.min.css">
-<script src="//current.bootstrapcdn.com/bootstrap-v204/js/bootstrap.min.js"></script>
+<link rel="stylesheet" href="#{request.script_name}/_assets/css/bootstrap.min.css">
+<script src="#{request.script_name}/_assets/js/bootstrap.min.js"></script>
    <style>
       body {
         padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
       }
     </style>
 </head>
-<body>   <div class="navbar navbar-fixed-top">
-      <div class="navbar-inner">
-        <div class="container">
-          <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-          </a>
-          <a class="brand" href="#">JSON-RPC Interface</a>
-          <div class="nav-collapse">
-            <ul class="nav">
-              <li class="#{['', '/'].include?(request.path_info) ? 'active' : ''}"><a href="#{request.script_name}/">API Overview</a></li>
-            </ul>
-          </div><!--/.nav-collapse -->
-        </div>
+<body> 
+  <div class="navbar navbar-fixed-top">
+    <div class="navbar-inner">
+      <div class="container">
+        <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </a>
+        <a class="brand" href="#">JSON-RPC Interface</a>
+        <div class="nav-collapse">
+          <ul class="nav">
+            <li class="#{['', '/'].include?(request.path_info) ? 'active' : ''}"><a href="#{request.script_name}/">API Overview</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
       </div>
     </div>
-
-    <div class="container">#{body}</div>
+  </div>
+  <div class="container">#{body}</div>
 </body>
 </html>
 HTML5
   ]
   end
+
+  ASSET_DIR = File.dirname(File.dirname(__FILE__))+'/assets'
+  MISSING = <<-EOM
+<!DOCTYPE html>
+<html>
+<head><title>404 Not found</title></head>
+<body>404 Not found</body>
+</html>
+EOM
 
   # Process browser request for #interface
   # @param [JSONRPC2::Interface] interface Interface being accessed
@@ -62,6 +71,18 @@ HTML5
     end
 
     case request.path_info
+    when %r'^/_assets/((img|css|js)/[a-z][-a-z0-9.]+)$'
+      name = $1
+      path = File.join(ASSET_DIR, name)
+
+      if File.exist?(path)
+        [200, {'Content-Type' => {
+          '.js' => 'text/javascript',
+          '.css' => 'text/css',
+          '.png' => 'image/png'}[File.extname(name)]}, [File.read(path)]]
+      else
+        [404, {'Content-Type' => 'text/html'}, []]
+      end
     when /^\/([a-zA-Z_0-9]+)/
       method = $1
       if info = interface.about_method(method)
