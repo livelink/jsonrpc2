@@ -2,6 +2,22 @@
 
 A Rack compatible, documenting JSON-RPC 2 DSL/server implementation for ruby.
 
+## Changes
+
+* 0.0.8 - 3-Sep-2012
+  Add #request to access Rack::Request object
+  Make URLs in HTML interface clickable
+
+* 0.0.7 - 27-Aug-2012
+  Add bundled Bootstrap assets for HTML test interface
+
+* 0.0.6 - 24-Aug-2012
+  Add Date/Time/DateTime as special string types with regex checks for validation
+
+* 0.0.5 - 19-Jul-2012
+  Add commandline client jsonrpc2
+  Add #auth to access currently authenticated username
+
 ## Features
 
 * Inline documentation
