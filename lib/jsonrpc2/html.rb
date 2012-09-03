@@ -167,9 +167,12 @@ EOS
   end
   # Format JSON result
   def format_result(result)
-    CGI.escapeHTML(JSON.pretty_unparse(JSON.parse(result)))
-  rescue Exception
-    result
+    CGI.escapeHTML(JSON.pretty_unparse(JSON.parse(result))).gsub(%r<("|&quot;)https?://[^"]+?("|&quot;)>) do |str|
+      url = CGI.unescapeHTML(str)[1...-1]
+       %Q["<a href="#{CGI.escapeHTML(url)}">#{CGI.escapeHTML(url)}</a>"]
+    end
+  rescue Exception => e
+    CGI.escapeHTML(result.to_s)
   end
   end
 end
