@@ -13,6 +13,7 @@ class ::Object::Calculator < JSONRPC2::Interface
       param 'b', 'Number', 'b'
       result 'Number', 'a * b'
       def mul
+        raise JSONRPC2::KnownError, [123, "Don't like negative numbers", params] if params['a'] < 0 or params['b'] < 0
         params['a'] * params['b']
       end
 

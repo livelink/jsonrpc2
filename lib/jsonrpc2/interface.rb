@@ -61,6 +61,7 @@ class Interface
     # @param [Hash] environment Rack environment hash
     # @return [Array<Fixnum, Hash<String,String>, Array<String>>] Rack-compatible response
     def call(environment)
+      environment['json.request-id'] = Digest::MD5.hexdigest("#{$host ||= Socket.gethostname}-#{$$}-#{Time.now.to_f}")[0,8]
       request = Rack::Request.new(environment)
       catch :rack_response do
         best = JSONRPC2::HTTPUtils.which(environment['HTTP_ACCEPT'], %w[text/html application/json-rpc application/json])
@@ -84,8 +85,8 @@ class Interface
       end
 
     rescue Exception => e
-      if env['rack.logger'].respond_to?(:error)
-        env['rack.logger'].error "#{e.class}: #{e.message} - #{e.backtrace * "\n    "}"
+      if environment['rack.logger'].respond_to?(:error)
+        environment['rack.logger'].error "#{e.class}: #{e.message} - #{e.backtrace * "\n    "}"
       end
       raise e.class, e.message, e.backtrace
     end
@@ -99,13 +100,13 @@ class Interface
         else
           auth = env["HTTP_AUTHORIZATION"]
         end
-        env['rack.logger'].info("[#{Time.now.strftime('%d/%m/%Y %H:%M:%S')}] [JSON-RPC2] #{env['REQUEST_URI']} - Auth: #{auth}, Data: #{data.inspect}")
+        env['rack.logger'].info("[JSON-RPC2] #{env['json.request-id']} #{env['REQUEST_URI']} - Auth: #{auth}, Data: #{data.is_a?(String) ? data : data.inspect}")
       end
       t = Time.now.to_f
       return yield
     ensure
       if env['rack.logger'].respond_to?(:info)
-        env['rack.logger'].info("[#{Time.now.strftime('%d/%m/%Y %H:%M:%S')}] [JSON-RPC2] Completed in #{'%.3f' % ((Time.now.to_f - t) * 1000)}ms")
+        env['rack.logger'].info("[JSON-RPC2] #{env['json.request-id']} Completed in #{'%.3f' % ((Time.now.to_f - t) * 1000)}ms#{ $! ? " - exception = #{$!.class}:#{$!.message}" : "" }")
       end
     end
 
@@ -133,12 +134,14 @@ class Interface
   # @param [Hash,Array] rpc_data Array of calls or Hash containing one call
   # @return [Hash,Array] Depends on input, but either a hash result or an array of results corresponding to calls.
   def dispatch(rpc_data)
-    case rpc_data
+    result = case rpc_data
     when Array
-      rpc_data.map { |rpc| dispatch_single(rpc) }.to_json
+      rpc_data.map { |rpc| dispatch_single(rpc) }
     else
-      dispatch_single(rpc_data).to_json
+      dispatch_single(rpc_data)
     end
+
+    return result.to_json
   end
 
   protected
@@ -162,17 +165,32 @@ class Interface
   def request
     @_jsonrpc_request
   end
+  def env
+    @_jsonrpc_env
+  end
 
   # Logger
   def logger
-    @_jsonrpc_logger ||= (request['rack.logger'] || Rack::NullLogger.new("null"))
+    @_jsonrpc_logger ||= (@_jsonrpc_env['rack.logger'] || Rack::NullLogger.new("null"))
   end
   # Check call validity and authentication & make a single method call
   #
   # @param [Hash] rpc JSON-RPC-2 call
   def dispatch_single(rpc)
     t = Time.now.to_f
-    logger.info("[JSON-RPC2] Call #{rpc.inspect}\n")
+
+    result = _dispatch_single(rpc)
+
+    if result['result']
+      logger.info("[JSON-RPC2] #{env['json.request-id']} Call completed OK in #{'%.3f' % ((Time.now.to_f - t) * 1000)}ms")
+    elsif result['error']
+      logger.info("[JSON-RPC2] #{env['json.request-id']} Call to ##{rpc['method']} failed in #{'%.3f' % ((Time.now.to_f - t) * 1000)}ms with error #{result['error']['code']} - #{result['error']['message']}")
+    end
+
+    result
+  end
+  def _dispatch_single(rpc)
+    t = Time.now.to_f
     unless rpc.has_key?('id') && rpc.has_key?('method') && rpc['jsonrpc'].eql?('2.0')
       return response_error(-32600, 'Invalid request', nil)
     end
@@ -191,10 +209,10 @@ class Interface
     rescue KnownError => e
       response_error(e.code, e.message, e.data) # XXX: Change me
     rescue Exception => e
+      logger.error("#{env['json.request-id']} Internal error calling #{rpc.inspect} - #{e.class}: #{e.message} #{e.backtrace.join("\n    ")}") if logger.respond_to?(:error)
       response_error(-32000, "#{e.class}: #{e.message}", e.backtrace) # XXX: Change me
+    else
     end
-  ensure
-    logger.info("[JSON-RPC2] Call completed in #{'%.3f' % ((Time.now.to_f - t) * 1000)}ms\n")
   end
   # List API methods
   #
