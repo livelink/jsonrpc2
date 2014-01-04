@@ -4,6 +4,9 @@ A Rack compatible, documenting JSON-RPC 2 DSL/server implementation for ruby.
 
 ## Changes
 
+* 0.1.1 - 4-Jan-2013
+  Improve logging of exceptions / failure
+
 * 0.1.0 - 4-Jan-2013
   Turn on timing & logging of all requests
 
