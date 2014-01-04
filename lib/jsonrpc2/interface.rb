@@ -8,12 +8,31 @@ require 'json'
 require 'base64'
 
 module JSONRPC2
+  module_function
+  def environment
+    ENV['RACK_ENV'] || ENV['RAILS_ENV'] || 'development'
+  end
+  def development?
+    environment.eql?('development')
+  end
   # Authentication failed error - only used if transport level authentication isn't.
   # e.g. BasicAuth returns a 401 HTTP response, rather than throw this.
   class AuthFail < RuntimeError; end
 
   # API error - thrown when an error is detected, e.g. params of wrong type.
   class APIFail < RuntimeError; end
+
+  # KnownError - thrown when a predictable error occurs.
+  class KnownError < RuntimeError
+    attr_accessor :code, :data
+    def self.exception(args)
+      code, message, data = *args
+      exception = new(message)
+      exception.code = code
+      exception.data = data
+      exception
+    end
+  end
 
 # Base class for JSONRPC2 interface
 class Interface
@@ -46,21 +65,47 @@ class Interface
       catch :rack_response do
         best = JSONRPC2::HTTPUtils.which(environment['HTTP_ACCEPT'], %w[text/html application/json-rpc application/json])
 
-        if request.path_info =~ %r'/_assets'
+        if request.path_info =~ %r'/_assets' or request.path_info == '/favicon.ico'
           best = 'text/html' # hack for assets
         end
 
         case best
         when 'text/html', 'text/css', 'image/png' # Assume browser
-          JSONRPC2::HTML.call(self, request)
+          monitor_time(environment, request.POST['__json__']) { JSONRPC2::HTML.call(self, request) }
         when 'application/json-rpc', 'application/json', nil # Assume correct by default
           environment['rack.input'].rewind
-          data = JSON.parse(environment['rack.input'].read)
-          self.new(environment).rack_dispatch(data)
+          raw = environment['rack.input'].read
+          data = JSON.parse(raw) if raw.to_s.size >= 2
+          monitor_time(environment, raw) { self.new(environment).rack_dispatch(data) }
         else
-          [406, {'Content-Type' => 'text/html'}, 
+          [406, {'Content-Type' => 'text/html'},
             ["<!DOCTYPE html><html><head><title>Media type mismatch</title></head><body>I am unable to acquiesce to your request</body></html>"]]
         end
+      end
+
+    rescue Exception => e
+      if env['rack.logger'].respond_to?(:error)
+        env['rack.logger'].error "#{e.class}: #{e.message} - #{e.backtrace * "\n    "}"
+      end
+      raise e.class, e.message, e.backtrace
+    end
+
+    private
+    def monitor_time(env, data, &block)
+      if env['rack.logger'].respond_to?(:info)
+        if env["HTTP_AUTHORIZATION"].to_s =~ /Basic /i
+          auth = Base64.decode64(env["HTTP_AUTHORIZATION"].to_s.sub(/Basic /i, '')) rescue nil
+          auth ||= env["HTTP_AUTHORIZATION"]
+        else
+          auth = env["HTTP_AUTHORIZATION"]
+        end
+        env['rack.logger'].info("[#{Time.now.strftime('%d/%m/%Y %H:%M:%S')}] [JSON-RPC2] #{env['REQUEST_URI']} - Auth: #{auth}, Data: #{data.inspect}")
+      end
+      t = Time.now.to_f
+      return yield
+    ensure
+      if env['rack.logger'].respond_to?(:info)
+        env['rack.logger'].info("[#{Time.now.strftime('%d/%m/%Y %H:%M:%S')}] [JSON-RPC2] Completed in #{'%.3f' % ((Time.now.to_f - t) * 1000)}ms")
       end
     end
 
@@ -117,10 +162,17 @@ class Interface
   def request
     @_jsonrpc_request
   end
+
+  # Logger
+  def logger
+    @_jsonrpc_logger ||= (request['rack.logger'] || Rack::NullLogger.new("null"))
+  end
   # Check call validity and authentication & make a single method call
   #
   # @param [Hash] rpc JSON-RPC-2 call
   def dispatch_single(rpc)
+    t = Time.now.to_f
+    logger.info("[JSON-RPC2] Call #{rpc.inspect}\n")
     unless rpc.has_key?('id') && rpc.has_key?('method') && rpc['jsonrpc'].eql?('2.0')
       return response_error(-32600, 'Invalid request', nil)
     end
@@ -136,9 +188,13 @@ class Interface
       response_error(-32000, "AuthFail: #{e.class}: #{e.message}", {}) # XXX: Change me
     rescue APIFail => e
       response_error(-32000, "APIFail: #{e.class}: #{e.message}", {}) # XXX: Change me
+    rescue KnownError => e
+      response_error(e.code, e.message, e.data) # XXX: Change me
     rescue Exception => e
       response_error(-32000, "#{e.class}: #{e.message}", e.backtrace) # XXX: Change me
     end
+  ensure
+    logger.info("[JSON-RPC2] Call completed in #{'%.3f' % ((Time.now.to_f - t) * 1000)}ms\n")
   end
   # List API methods
   #

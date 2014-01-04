@@ -15,6 +15,7 @@ module JSONRPC2
 <title>#{title}</title>
 #{options[:head]}
 <link rel="stylesheet" href="#{request.script_name}/_assets/css/bootstrap.min.css">
+<script src="#{request.script_name}/_assets/js/jquery-1.10.2.min.js"></script>
 <script src="#{request.script_name}/_assets/js/bootstrap.min.js"></script>
    <style>
       body {

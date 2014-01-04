@@ -1,5 +1,6 @@
 $: << File.join(File.dirname(__FILE__),'../lib')
 require 'jsonrpc2/interface'
+require 'rack/logger'
 
 class ::Object::Calculator < JSONRPC2::Interface
   title "JSON-RPC2 Calculator"
@@ -33,5 +34,6 @@ class ::Object::Calculator < JSONRPC2::Interface
   end
 end
 
+use Rack::Logger
 run Calculator
 

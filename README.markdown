@@ -4,6 +4,13 @@ A Rack compatible, documenting JSON-RPC 2 DSL/server implementation for ruby.
 
 ## Changes
 
+* 0.1.0 - 4-Jan-2013
+  Turn on timing & logging of all requests
+
+* 0.0.9 - 3-Sep-2012
+  Improve client validation
+  Make params optional in request call
+
 * 0.0.8 - 3-Sep-2012
   Add #request to access Rack::Request object
   Make URLs in HTML interface clickable
