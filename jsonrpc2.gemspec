@@ -59,4 +59,5 @@ EOD
   gem.add_development_dependency('rack') # Makes it possible to test JSONRPC2::Interface
   gem.add_development_dependency('rspec')
   gem.add_development_dependency('puma') # Required to run rackup example/config.ru
+  gem.add_development_dependency('pry-byebug')
 end
