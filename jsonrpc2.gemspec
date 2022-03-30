@@ -7,7 +7,7 @@ Gem::Specification.new do |gem|
   gem.description   = <<-EOD
 == Description
 
-A Rack compatible JSON-RPC2 server domain specific language (DSL) - allows JSONRPC APIs to be 
+A Rack compatible JSON-RPC2 server domain specific language (DSL) - allows JSONRPC APIs to be
 defined as mountable Rack applications with inline documentation, authentication and type checking.
 
 e.g.
@@ -45,7 +45,7 @@ EOD
   gem.summary       = %q{JSON-RPC2 server DSL}
   gem.homepage      = "http://github.com/geoffyoungs/jsonrpc2"
 
-  gem.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
+  gem.executables   = `git ls-files -- exe/*`.split("\n").map{ |f| File.basename(f) }
   gem.files         = `git ls-files`.split("\n")
   gem.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
   gem.name          = "jsonrpc2"
