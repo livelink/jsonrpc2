@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rack'
+require 'digest'
 require 'jsonrpc2'
 require 'jsonrpc2/accept'
 require 'jsonrpc2/textile'
@@ -221,7 +222,6 @@ module JSONRPC2
       rescue Exception => e
         logger.error("#{env['json.request-id']} Internal error calling #{rpc.inspect} - #{e.class}: #{e.message} #{e.backtrace.join("\n    ")}") if logger.respond_to?(:error)
         response_error(-32000, "#{e.class}: #{e.message}", e.backtrace) # XXX: Change me
-      else
       end
     end
 
