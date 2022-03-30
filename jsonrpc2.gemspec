@@ -56,5 +56,6 @@ EOD
   gem.add_dependency("RedCloth")
   gem.add_dependency('thor')
 
+  gem.add_development_dependency('rack') # Makes it possible to test JSONRPC2::Interface
   gem.add_development_dependency('rspec')
 end

@@ -1,3 +1,6 @@
+# frozen_string_literal: true
+
+require 'rack'
 require 'jsonrpc2'
 require 'jsonrpc2/accept'
 require 'jsonrpc2/textile'
