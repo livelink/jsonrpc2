@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+docker run --rm \
+           --mount type=bind,source="$(pwd)",target=/srv/www \
+           -p 9292:9292 \
+           jsonrpc2 \
+           rackup example/config.ru --host 0.0.0.0
