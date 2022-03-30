@@ -55,4 +55,6 @@ EOD
   gem.add_dependency("json")
   gem.add_dependency("RedCloth")
   gem.add_dependency('thor')
+
+  gem.add_development_dependency('rspec')
 end
