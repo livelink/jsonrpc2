@@ -203,3 +203,9 @@ e.g.
     auth_with JSONRPC2::BasicAuth.new({'apiuser' => 'secretword'})
 
 > Specify authentication method that should be used to verify the access credentials before printing.  See {JSONRPC2::BasicAuth} for examples/info.
+
+## Development
+
+- Run `bin/setup` to build a local docker image
+- Run `bin/test` to run the test suite
+- Run `bin/run-example` to run the example JSONRPC API from within docker container
