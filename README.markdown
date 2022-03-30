@@ -51,7 +51,7 @@ A Rack compatible, documenting JSON-RPC 2 DSL/server implementation for ruby.
          def mul args
            args['a'] * args['b']
          end
-   
+
          desc 'Add numbers'
          param 'a', 'Number', 'First number'
          param 'b', 'Number', 'Second number'
@@ -174,7 +174,7 @@ e.g.
     title "Calculator interface"
     introduction "Very simple calculator interface"
 
-    section "Entry points" do 
+    section "Entry points" do
       ...
     end
 
@@ -198,5 +198,3 @@ e.g.
     auth_with JSONRPC2::BasicAuth.new({'apiuser' => 'secretword'})
 
 > Specify authentication method that should be used to verify the access credentials before printing.  See {JSONRPC2::BasicAuth} for examples/info.
-
-
