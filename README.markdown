@@ -4,6 +4,9 @@ A Rack compatible, documenting JSON-RPC 2 DSL/server implementation for ruby.
 
 ## Changes
 
+* UNRELEASED
+  Fix the regression introduced in 0.1.1 which makes the valid requests crash
+
 * 0.1.1 - 4-Jan-2013
   Improve logging of exceptions / failure
 
@@ -38,41 +41,43 @@ A Rack compatible, documenting JSON-RPC 2 DSL/server implementation for ruby.
 
 ## Example
 
-    class Calculator < JSONRPC2::Interface
-      title "JSON-RPC2 Calculator"
-      introduction "This interface allows basic maths calculations via JSON-RPC2"
-      auth_with JSONRPC2::BasicAuth.new({'apiuser' => 'secretword'})
+```ruby
+class Calculator < JSONRPC2::Interface
+  title "JSON-RPC2 Calculator"
+  introduction "This interface allows basic maths calculations via JSON-RPC2"
+  auth_with JSONRPC2::BasicAuth.new({'apiuser' => 'secretword'})
 
-      section 'Simple Ops' do
-         desc 'Multiply two numbers'
-         param 'a', 'Number', 'First number'
-         param 'b', 'Number', 'Second number'
-         result 'Number', 'a * b'
-         def mul args
-           args['a'] * args['b']
-         end
-   
-         desc 'Add numbers'
-         param 'a', 'Number', 'First number'
-         param 'b', 'Number', 'Second number'
-         optional 'c', 'Number', 'Third number'
-         example 'Calculate 1 + 1', :params => { 'a' => 1, 'b' => 1}, :result => 2
-         result 'Number', 'a + b + c'
-         def sum args
-           val = args['a'] + args['b']
-           val += args['c'] if args['c']
-           val
-         end
+  section 'Simple Ops' do
+      desc 'Multiply two numbers'
+      param 'a', 'Number', 'First number'
+      param 'b', 'Number', 'Second number'
+      result 'Number', 'a * b'
+      def mul args
+        args['a'] * args['b']
       end
-    end
+
+      desc 'Add numbers'
+      param 'a', 'Number', 'First number'
+      param 'b', 'Number', 'Second number'
+      optional 'c', 'Number', 'Third number'
+      example 'Calculate 1 + 1', :params => { 'a' => 1, 'b' => 1}, :result => 2
+      result 'Number', 'a + b + c'
+      def sum args
+        val = args['a'] + args['b']
+        val += args['c'] if args['c']
+        val
+      end
+  end
+end
+```
 
 To run example:
-
-    $ gem install shotgun # unless it's already installed
-    $ shotgun example/config.ru
+```bash
+$ gem install shotgun # unless it's already installed
+$ shotgun example/config.ru
+```
 
 Browse API and test it via a web browser at http://localhost:9393/
-
 
 ## Inline documentation
 
@@ -174,7 +179,7 @@ e.g.
     title "Calculator interface"
     introduction "Very simple calculator interface"
 
-    section "Entry points" do 
+    section "Entry points" do
       ...
     end
 
@@ -199,4 +204,8 @@ e.g.
 
 > Specify authentication method that should be used to verify the access credentials before printing.  See {JSONRPC2::BasicAuth} for examples/info.
 
+## Development
 
+- Run `bin/setup` to build a local docker image
+- Run `bin/test` to run the test suite
+- Run `bin/run-example` to run the example JSONRPC API from within docker container
