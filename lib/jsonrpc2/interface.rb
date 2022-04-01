@@ -242,7 +242,7 @@ module JSONRPC2
       if api_methods.include?(method)
         begin
           Types.valid_params?(self.class, method, params)
-        rescue Exception => e
+        rescue Types::InvalidParamsError => e
           return response_error(-32602, "Invalid params - #{e.message}", {})
         end
 
