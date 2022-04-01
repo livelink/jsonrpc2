@@ -8,10 +8,10 @@ A Rack compatible, documenting JSON-RPC 2 DSL/server implementation for ruby.
   Fix the regression introduced in 0.1.1 which makes the valid requests crash
   Stop exposing application internals publicly on errors
 
-* 0.1.1 - 4-Jan-2013
+* 0.1.1 - 4-Jan-2014
   Improve logging of exceptions / failure
 
-* 0.1.0 - 4-Jan-2013
+* 0.1.0 - 4-Jan-2014
   Turn on timing & logging of all requests
 
 * 0.0.9 - 3-Sep-2012
