@@ -17,6 +17,7 @@ module JSONRPC2
   # * CustomType - A defined custom object type
   module Types
     class InvalidParamsError < ArgumentError; end
+    class InvalidResultError < RuntimeError; end
 
     module_function
     DateTimeRegex = %r"([0-9]{4})(-([0-9]{2})(-([0-9]{2})(T([0-9]{2}):([0-9]{2})(:([0-9]{2})(\.([0-9]+))?)?(Z|(([-+])([0-9]{2}):([0-9]{2})))?)?)?)?"
@@ -127,8 +128,11 @@ module JSONRPC2
       if about[:returns].nil?
         return value.nil?
       end
-      valid?(interface, about[:returns][:type], value) or
-        raise "Invalid return type: should have been #{about[:returns][:type]}, was #{value.class.name}"
+      return true if valid?(interface, about[:returns][:type], value)
+
+      raise InvalidResultError, <<~MSG.chomp
+        Invalid return type: should have been #{about[:returns][:type]}, was #{value.class.name}
+      MSG
     end
   end
 
