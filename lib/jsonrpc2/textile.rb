@@ -8,11 +8,11 @@ module JSONRPC2
 			return nil if @about.nil? or @about.empty?
 			str = ""
 
-			if @title
+      if @title
 				str << "h1. #{@title}\n"
       else
         str << "h1. #{name}\n"
-			end
+      end
 
 			if @introduction
 				str << "\nh2. Introduction\n\n#{@introduction}\n"
@@ -41,7 +41,7 @@ module JSONRPC2
 				if section[:summary]
 					str << "\n#{section[:summary]}\n"
 				end
-				
+
 				str += to_textile_group(section).to_s
 			end
 
@@ -70,7 +70,7 @@ module JSONRPC2
 
       if res = info[:returns]
         str << "\n\nh5. Result\n"
-        str << "\n* @#{res[:type]}@"		
+        str << "\n* @#{res[:type]}@"
         str << " - #{res[:desc]}" if res[:desc]
         str << "\n"
       else
@@ -128,7 +128,7 @@ module JSONRPC2
 			return nil if list.empty?
 
 			str = ''
-			
+
 			list.sort_by { |info| info[:index] }.each do |info|
         str << method_to_textile(info)
 			end
