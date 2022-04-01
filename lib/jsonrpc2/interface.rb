@@ -220,7 +220,8 @@ module JSONRPC2
       rescue KnownError => e
         response_error(e.code, 'An error occurred', {})
       rescue Exception => e
-        logger.error("#{env['json.request-id']} Internal error calling #{rpc.inspect} - #{e.class}: #{e.message} #{e.backtrace.join("\n    ")}") if logger.respond_to?(:error)
+        log_error("Internal error calling #{rpc.inspect} - #{e.class}: #{e.message} #{e.backtrace.join("\n    ")}")
+        invoke_server_error_hook(e)
         response_error(-32000, "An error occurred. Check logs for details", {})
       end
     end
@@ -389,5 +390,21 @@ module JSONRPC2
     end
 
     extend JSONRPC2::TextileEmitter
+
+    private
+
+    def invoke_server_error_hook(error)
+      on_server_error(request_id: env['json.request-id'], error: error)
+    rescue => error
+      log_error("Server error hook failed - #{error.class}: #{error.message} #{error.backtrace.join("\n    ")}")
+    end
+
+    # Available for reimplementation by a subclass, noop by default
+    def on_server_error(request_id:, error:)
+    end
+
+    def log_error(message)
+      logger.error("#{env['json.request-id']} #{message}") if logger.respond_to?(:error)
+    end
   end
 end

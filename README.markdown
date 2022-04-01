@@ -7,6 +7,7 @@ A Rack compatible, documenting JSON-RPC 2 DSL/server implementation for ruby.
 * UNRELEASED
   Fix the regression introduced in 0.1.1 which makes the valid requests crash
   Stop exposing application internals publicly on errors
+  Make it possible to define callback for server errors with `JSONRPC2::Interface#on_server_error`
 
 * 0.1.1 - 4-Jan-2014
   Improve logging of exceptions / failure
