@@ -17,6 +17,8 @@ RSpec.describe JSONRPC2::Interface do
       result 'String', 'A tailored greeting'
       def hello
         raise 'He-Must-Not-Be-Named' if params['name'] == 'Voldemort'
+        return 42 if params['name'] == 'Marvin'
+
         "Hello, #{params['name']}!"
       end
     end
@@ -99,6 +101,18 @@ RSpec.describe JSONRPC2::Interface do
           expect(parsed_response_body[:error]).to eq(
             code: -32602,
             message: 'Invalid params - Extra parameters ["extra"] for hello.',
+            data: {}
+          )
+        end
+      end
+
+      context 'with an invalid result type' do
+        let(:params) { { 'name' => 'Marvin' } }
+
+        it 'returns the helpful error' do
+          expect(parsed_response_body[:error]).to eq(
+            code: -32602,
+            message: 'Invalid result - Invalid return type: should have been String, was Integer',
             data: {}
           )
         end
