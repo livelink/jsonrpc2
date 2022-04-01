@@ -214,14 +214,14 @@ module JSONRPC2
 
         call(rpc['method'], rpc['id'], rpc['params'])
       rescue AuthFail => e
-        response_error(-32000, "AuthFail: #{e.class}: #{e.message}", {}) # XXX: Change me
+        response_error(-32000, 'AuthFail: Invalid credentials', {})
       rescue APIFail => e
-        response_error(-32000, "APIFail: #{e.class}: #{e.message}", {}) # XXX: Change me
+        response_error(-32000, 'APIFail', {})
       rescue KnownError => e
-        response_error(e.code, e.message, e.data) # XXX: Change me
+        response_error(e.code, 'An error occurred', {})
       rescue Exception => e
         logger.error("#{env['json.request-id']} Internal error calling #{rpc.inspect} - #{e.class}: #{e.message} #{e.backtrace.join("\n    ")}") if logger.respond_to?(:error)
-        response_error(-32000, "#{e.class}: #{e.message}", e.backtrace) # XXX: Change me
+        response_error(-32000, "An error occurred. Check logs for details", {})
       end
     end
 

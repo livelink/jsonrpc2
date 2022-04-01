@@ -98,8 +98,8 @@ RSpec.describe JSONRPC2::Interface do
       it 'informs about the server error' do
         expect(parsed_response_body[:error]).to match(
           code: -32000,
-          message: 'RuntimeError: He-Must-Not-Be-Named', # Bad - exposes class and private error message
-          data: a_kind_of(Array)                         # Bad - exposes stacktrace
+          message: 'An error occurred. Check logs for details',
+          data: {}
         )
       end
     end
