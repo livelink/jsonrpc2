@@ -43,7 +43,7 @@ e.g.
 
 EOD
   gem.summary       = %q{JSON-RPC2 server DSL}
-  gem.homepage      = "http://github.com/geoffyoungs/jsonrpc2"
+  gem.homepage      = "http://github.com/livelink/jsonrpc2"
 
   gem.executables   = `git ls-files -- exe/*`.split("\n").map{ |f| File.basename(f) }
   gem.files         = `git ls-files`.split("\n")
