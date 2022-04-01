@@ -252,11 +252,7 @@ module JSONRPC2
           result = send(method, params)
         end
 
-        begin
-          Types.valid_result?(self.class, method, result)
-        rescue Exception => e
-          return response_error(-32602, "Invalid result - #{e.message}", {})
-        end
+        Types.valid_result?(self.class, method, result)
 
         response_ok(id, result)
       else

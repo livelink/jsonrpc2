@@ -109,10 +109,10 @@ RSpec.describe JSONRPC2::Interface do
       context 'with an invalid result type' do
         let(:params) { { 'name' => 'Marvin' } }
 
-        it 'returns the helpful error' do
-          expect(parsed_response_body[:error]).to eq(
-            code: -32602,
-            message: 'Invalid result - Invalid return type: should have been String, was Integer',
+        it 'informs about the server error' do
+          expect(parsed_response_body[:error]).to match(
+            code: -32000,
+            message: 'An error occurred. Check logs for details',
             data: {}
           )
         end
