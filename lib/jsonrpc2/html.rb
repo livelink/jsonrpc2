@@ -23,7 +23,7 @@ module JSONRPC2
       }
     </style>
 </head>
-<body> 
+<body>
   <div class="navbar navbar-fixed-top">
     <div class="navbar-inner">
       <div class="container">
@@ -101,7 +101,7 @@ EOM
       end
     else
       body = RedCloth.new(interface.to_textile).to_html.gsub(/\<h3\>(.*?)\<\/h3\>/, '<h3><a href="'+request.script_name+'/\1">\1</a></h3>')
-      [200, {'Content-Type' => 'text/html'}, 
+      [200, {'Content-Type' => 'text/html'},
               html5('Interface: '+interface.name.to_s, body, :request => request)]
     end
   end
@@ -172,7 +172,7 @@ EOS
       url = CGI.unescapeHTML(str)[1...-1]
        %Q["<a href="#{CGI.escapeHTML(url)}">#{CGI.escapeHTML(url)}</a>"]
     end
-  rescue Exception => e
+  rescue Exception
     CGI.escapeHTML(result.to_s)
   end
   end

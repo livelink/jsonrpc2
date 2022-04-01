@@ -201,7 +201,6 @@ module JSONRPC2
     end
 
     def _dispatch_single(rpc)
-      t = Time.now.to_f
       unless rpc.has_key?('id') && rpc.has_key?('method') && rpc['jsonrpc'].eql?('2.0')
         return response_error(-32600, 'Invalid request', nil)
       end
