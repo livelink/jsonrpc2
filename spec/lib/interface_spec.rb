@@ -2,6 +2,7 @@
 
 require 'json'
 require 'base64'
+require 'logger'
 require 'jsonrpc2/interface'
 require 'jsonrpc2/auth'
 
@@ -128,6 +129,33 @@ RSpec.describe JSONRPC2::Interface do
           message: 'An error occurred. Check logs for details',
           data: {}
         )
+      end
+
+      context 'with error hook raising an error' do
+        let(:initialization_params) { super().merge('rack.logger' => rack_logger) }
+        let(:rack_logger) { instance_double(::Logger, :rack_logger, info: nil, error: nil) }
+
+        before do
+          rpc_api_class.class_eval do
+            def on_server_error(request_id:, error:)
+              raise "Whoops, my bad!"
+            end
+          end
+        end
+
+        it 'informs about the server error' do
+          expect(parsed_response_body[:error]).to match(
+            code: -32000,
+            message: 'An error occurred. Check logs for details',
+            data: {}
+          )
+        end
+
+        it 'logs the error' do
+          expect(rack_logger).to receive(:error).with(/Whoops, my bad!/)
+
+          dispatch_result
+        end
       end
     end
   end
