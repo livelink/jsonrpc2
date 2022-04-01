@@ -16,6 +16,8 @@ module JSONRPC2
   # * Value (or Any or void) - Any value of any type
   # * CustomType - A defined custom object type
   module Types
+    class InvalidParamsError < ArgumentError; end
+
     module_function
     DateTimeRegex = %r"([0-9]{4})(-([0-9]{2})(-([0-9]{2})(T([0-9]{2}):([0-9]{2})(:([0-9]{2})(\.([0-9]+))?)?(Z|(([-+])([0-9]{2}):([0-9]{2})))?)?)?)?"
     DateRegex     = %r'\A\d{4}-\d{2}-\d{2}\z'
@@ -76,7 +78,7 @@ module JSONRPC2
     end
 
     # Checks that param hash is valid for API call
-    # 
+    #
     # @param [Interface] interface API class
     # @param [String] method Method name
     # @param [Hash] data params hash to check
@@ -92,23 +94,23 @@ module JSONRPC2
         return true
       end
 
-      raise "Params should not be nil" if data.nil?
+      raise InvalidParamsError, "Params should not be nil" if data.nil?
 
       extra_keys = data.keys - param_names
       unless extra_keys.empty?
-        raise "Extra parameters #{extra_keys.inspect} for #{method}."
+        raise InvalidParamsError, "Extra parameters #{extra_keys.inspect} for #{method}."
       end
 
       params.each do |param|
         if data.has_key?(param[:name])
           value = data[param[:name].to_s]
           unless valid?(interface, param[:type], value)
-            raise "'#{param[:name]}' should be of type #{param[:type]}, was #{value.class.name}"
+            raise InvalidParamsError, "'#{param[:name]}' should be of type #{param[:type]}, was #{value.class.name}"
           end
         elsif ! param[:required]
           next true
         else
-          raise "Missing parameter: '#{param[:name]}' of type #{param[:type]} for #{method}"
+          raise InvalidParamsError, "Missing parameter: '#{param[:name]}' of type #{param[:type]} for #{method}"
         end
       end
     end

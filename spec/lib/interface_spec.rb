@@ -85,10 +85,23 @@ RSpec.describe JSONRPC2::Interface do
     end
 
     context 'with a valid param' do
-      let(:rpc_request_data) { super().merge('params' => { 'name' => 'Geoff' }) }
+      let(:rpc_request_data) { super().merge('params' => params) }
+      let(:params) { { 'name' => 'Geoff' } }
 
       it 'returns the valid response' do
         expect(parsed_response_body[:result]).to eq('Hello, Geoff!')
+      end
+
+      context 'with an extra param' do
+        let(:params) { super().merge('extra' => 'I should not be here') }
+
+        it 'returns the helpful param error' do
+          expect(parsed_response_body[:error]).to eq(
+            code: -32602,
+            message: 'Invalid params - Extra parameters ["extra"] for hello.',
+            data: {}
+          )
+        end
       end
     end
 
