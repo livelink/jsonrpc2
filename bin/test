@@ -3,4 +3,4 @@
 docker run --rm \
            --mount type=bind,source="$(pwd)",target=/srv/www \
            jsonrpc2 \
-           bundle exec rspec
+           bundle exec rspec $@
