@@ -125,9 +125,7 @@ module JSONRPC2
     def valid_result?(interface, method, value)
       about = interface.about[method.to_s]
       return true if about.nil? # Undefined
-      if about[:returns].nil?
-        return value.nil?
-      end
+      return value.nil? if about[:returns].nil?
       return true if valid?(interface, about[:returns][:type], value)
 
       raise InvalidResultError, <<~MSG.chomp
