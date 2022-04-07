@@ -51,6 +51,12 @@ EOD
   gem.name          = "jsonrpc2"
   gem.require_paths = ["lib"]
   gem.version       = JSONRPC2::VERSION
+  gem.metadata = {
+    "bug_tracker_uri"   => "https://github.com/livelink/jsonrpc2/issues",
+    "changelog_uri"     => "https://github.com/livelink/jsonrpc2/blob/master/CHANGELOG.md",
+    "documentation_uri" => "https://github.com/livelink/jsonrpc2#inline-documentation",
+  }
+
   gem.add_dependency("httpclient")
   gem.add_dependency("json")
   gem.add_dependency("RedCloth")
