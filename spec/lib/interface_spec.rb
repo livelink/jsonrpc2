@@ -131,6 +131,28 @@ RSpec.describe JSONRPC2::Interface do
         )
       end
 
+      context 'with a correctly configured error hook' do
+        before do
+          rpc_api_class.class_eval do
+            attr_reader :test_error_data
+
+            def on_server_error(request_id:, error:)
+              @test_error_data = {
+                request_id: request_id,
+                error: error
+              }
+            end
+          end
+        end
+
+        it 'invokes the hook' do
+          dispatch_result
+
+          expect(instance.test_error_data[:error].message).to eq('He-Must-Not-Be-Named')
+          expect(instance.test_error_data[:request_id]).to eq(nil) # Request_id is generated higher in the stack
+        end
+      end
+
       context 'with error hook raising an error' do
         let(:initialization_params) { super().merge('rack.logger' => rack_logger) }
         let(:rack_logger) { instance_double(::Logger, :rack_logger, info: nil, error: nil) }
