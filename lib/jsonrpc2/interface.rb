@@ -239,6 +239,7 @@ module JSONRPC2
     # @param [Hash] params Method parameters
     # @return [Hash] JSON response
     def call(method, id, params)
+      invoke_before_validation_hook(method, id, params)
       if api_methods.include?(method)
         begin
           Types.valid_params?(self.class, method, params)
@@ -398,8 +399,17 @@ module JSONRPC2
       log_error("Server error hook failed - #{error.class}: #{error.message} #{error.backtrace.join("\n    ")}")
     end
 
+    def invoke_before_validation_hook(method, id, params)
+      before_validation(method: method, id: id, params: params)
+    rescue Exception => error
+      log_error("Before validation hook failed - #{error.class}: #{error.message} #{error.backtrace.join("\n    ")}")
+    end
+
     # Available for reimplementation by a subclass, noop by default
     def on_server_error(request_id:, error:)
+    end
+
+    def before_validation(method:, id:, params:)
     end
 
     def log_error(message)

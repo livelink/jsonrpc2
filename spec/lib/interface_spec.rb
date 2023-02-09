@@ -118,6 +118,30 @@ RSpec.describe JSONRPC2::Interface do
           )
         end
       end
+
+      context 'with a correctly configured before_validation hook' do
+        before do
+          rpc_api_class.class_eval do
+            attr_reader :test_before_validation_data
+
+            def before_validation(method:, id:, params:)
+              @test_before_validation_data = {
+                method: method,
+                id: id,
+                params: params
+              }
+            end
+          end
+        end
+
+        it 'invokes the hook' do
+          dispatch_result
+
+          expect(instance.test_before_validation_data[:method]).to eq('hello')
+          expect(instance.test_before_validation_data[:id]).to eq(123)
+          expect(instance.test_before_validation_data[:params]).to eq({ 'name' => 'Geoff' })
+        end
+      end
     end
 
     context 'with an unhandled server error' do
