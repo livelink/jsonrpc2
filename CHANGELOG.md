@@ -1,3 +1,7 @@
+## [0.3.0] - 2023-02-09
+### Added
+- Possibility to define callback for request calls prior to validation `JSONRPC2::Interface#before_validation`
+
 ## [0.2.0] - 2022-04-07
 ### Added
 - Possibility to define callback for server errors with `JSONRPC2::Interface#on_server_error`
