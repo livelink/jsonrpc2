@@ -401,7 +401,7 @@ module JSONRPC2
 
     def invoke_before_validation_hook(method, id, params)
       before_validation(method: method, id: id, params: params)
-    rescue Exception => error
+    rescue => error
       log_error("Before validation hook failed - #{error.class}: #{error.message} #{error.backtrace.join("\n    ")}")
     end
 
